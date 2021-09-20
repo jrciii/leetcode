@@ -16,6 +16,9 @@
 
 (define/contract (strong-password-checker password)
   (-> string? exact-integer?)
+  (set! has-lower #f)
+  (set! has-upper #f)
+  (set! has-digit #f)
   (let ((clist (string->list password)))
     (for-each (lambda (c)
 		(set! has-lower (or has-lower (char-lower-case? c)))
@@ -29,7 +32,9 @@
 
 (define (strengthen steps pos remaining)
   (let ((charsLeft (max 0 (- 6 pos)))
+	(curr-length (+ pos (length remaining)))
 	(spc-chr-left (- 3 (+ (btoi has-lower) (btoi has-upper) (btoi has-digit)))))
+    (displayln `(,steps ,curr-length ,pos ,charsLeft ,has-lower ,has-upper ,has-digit ,remaining))
     (cond
      [(and has-lower
 	   has-upper
@@ -48,10 +53,18 @@
      [(null? remaining)
       (+ steps (max charsLeft spc-chr-left))]
      [(and (< pos 18) (>= (length remaining) 3) (= 1 (length (remove-duplicates (take remaining 3)))))
-      (cond [(> spc-chr-left 0)
-	     (set! has-lower #t)
-	     (set! has-upper (or has-lower has-upper))
+      (cond [(and (>= curr-length 6) (<= curr-length 20))
 	     (set! has-digit (or has-upper has-digit))
+	     (set! has-upper (or has-lower has-upper))
+	     (set! has-lower #t)
 	     (strengthen (add1 steps) (+ 3 pos) (drop remaining 3))]
+	    [(and (< curr-length 20) (<= (+ pos charsLeft) 6))
+	     (strengthen (add1 steps) (+ 2 pos) (cdr remaining))]
 	    [else (strengthen (add1 steps) pos (cdr remaining))])]
      [else (strengthen steps (add1 pos) (cdr remaining))])))
+
+;(strong-password-checker "aaa111")
+;(strong-password-checker "aaaB1")
+;(strong-password-checker "1111111111")
+; Gives 9 should give 8
+(strong-password-checker "bbaaaaaaaaaaaaaaacccccc")
