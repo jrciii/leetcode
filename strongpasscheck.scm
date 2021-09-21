@@ -16,21 +16,8 @@
 (require rnrs/arithmetic/bitwise-6)
 (define/contract (strong-password-checker password)
   (-> string? exact-integer?)
-  ;; (set! has-lower #f)
-  ;; (set! has-upper #f)
-  ;; (set! has-digit #f)
-  ;; (let ((clist (string->list password)))
-  ;;   (for-each (lambda (c)
-  ;; 		(set! has-lower (or has-lower (char-lower-case? c)))
-  ;; 		(set! has-upper (or has-upper (char-upper-case? c)))
-  ;; 		(set! has-digit (or has-digit (char-numeric? c))))
-  ;; 	      clist)
-  ;;   (strengthen 0 0 clist))
   (strengthen #:remaining (string->list password))
   )
-
-(define (btoi b)
-  (if b 1 0))
 
 (define HAS_LOWER 1)
 (define HAS_UPPER 2)
@@ -38,7 +25,7 @@
 (define MAX_FLAGS (+ HAS_LOWER HAS_UPPER HAS_DIGIT))
 
 (define (set-flag bitflag flag)
-  (bitwise-ior flags flag))
+  (bitwise-ior bitflag flag))
 
 (define (add-next-flag flags)
   (bitwise-and MAX_FLAGS (bitwise-ior flags (bitwise-arithmetic-shift 1 (bitwise-first-bit-set (bitwise-not flags))))))
@@ -54,6 +41,12 @@
 
 (define (calc-rep rep a b)
   (if (eq? a b) (add1 rep) 1))
+
+(define (check-remain-flags flags remaining)
+  (cond
+   [(null? remaining) flags]
+   [(= flags MAX_FLAGS) flags]
+   [else (check-remain-flags (maybe-add-flag flags (car remaining)) (cdr remaining))]))
 
 (define (strengthen
 	 #:steps (steps 0)
@@ -75,7 +68,9 @@
 		 curr-length ,curr-length))
     (cond
      [(null? remaining)
-      (+ steps (max chars-left spc-chr-left) (if (= 3 rep) 1 0))]
+      (+ steps (max chars-left (quotient rep 3) spc-chr-left))]
+     [(= 20 pos)
+      (+ steps (if (= 3 rep) 1 0) (length remaining) (- 3 (bitwise-bit-count (check-remain-flags flags remaining))))]
      [(= 3 rep)
       (cond
        [(< curr-length 6)
@@ -86,7 +81,7 @@
 	 #:last-char '()
 	 #:rep 0
 	 #:flags (add-next-flag flags))]
-       [(or (> spc-chr-left 0) (eq? last-char (car remaining)))
+       [(or (< (bitwise-bit-count (maybe-add-flag flags (car remaining))) 3) (and (< curr-length 22) (eq? last-char (car remaining))))
 	(strengthen
 	 #:steps (add1 steps)
 	 #:pos pos
@@ -97,19 +92,11 @@
        [else
 	(strengthen
 	 #:steps (add1 steps)
-	 #:pos pos
-	 #:remaining (cdr remaining)
-	 #:last-char (car remaining)
-	 #:rep 1
+	 #:pos (sub1  pos)
+	 #:remaining remaining
+	 #:last-char last-char
+	 #:rep (sub1 rep)
 	 #:flags flags)])]
-     [(and (= pos 20))
-      (strengthen
-       #:steps (add1 steps)
-       #:pos pos
-       #:remaining (cdr remaining)
-       #:last-char (car remaining)
-       #:rep rep
-       #:flags (maybe-add-flag flags (car remaining)))]
      [else
       (strengthen
        #:steps steps
@@ -169,7 +156,7 @@
 ;; 	    [else (strengthen (add1 steps) pos (cdr remaining))])]
 ;;      [else (strengthen steps (add1 pos) (cdr remaining))])))
 
-(map strong-password-checker '("a"
+(map (lambda (x) (displayln "============")(strong-password-checker x)) '("a"
 			       "aaa111"
 			       "aaaB1"
 			       "1111111111"
@@ -178,7 +165,12 @@
 			       "aaaabbbbccccddeeddeeddeedd"
 			       "1337c0DE"
 			       "aaaaAAAAAA000000123456"
-			       "A1234567890aaabbbbccccc"))
+			       "A1234567890aaabbbbccccc"
+			       "ABABABABABABABABABAB1"
+			       "ssSsss"
+			       "1010101010aaaB10101010"
+			       "1234567890123456Baaaaa"
+			       "aaaaabbbb1234567890ABA"))
 ;; 5
 ;; 2
 ;; 1
@@ -189,4 +181,35 @@
 ;; 0
 ;; 5
 ;; 4
+;; 2
+;; 1
+;; 2
+;; 3
+;; 3
 
+
+;; bbaaaaaaaaaaaaaaaccc ccc
+
+;; 6 rep chunks <=20
+;; 3 over
+;; 2 flags miss
+
+;; rem has 
+;; need 8, get 9
+;; aaaabbbbccccddeeddee - ddeedd
+
+;; 6 over
+;; 2 flag miss
+;; 3 chunk
+
+;; 1
+;; 6 over
+;; 2 chunk
+;; 1 fm
+
+;; 2
+;; 6 over
+;; 1 chunk
+
+;; 4
+;; 4 over
