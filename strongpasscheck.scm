@@ -26,7 +26,7 @@
   ;; 		(set! has-digit (or has-digit (char-numeric? c))))
   ;; 	      clist)
   ;;   (strengthen 0 0 clist))
-  (strengthen 0 0 (string->list password) '() 0 #f #f #f)
+  (strengthen #:remaining (string->list password))
   )
 
 (define (btoi b)
@@ -43,56 +43,131 @@
 (define (add-next-flag flags)
   (bitwise-and MAX_FLAGS (bitwise-ior flags (bitwise-arithmetic-shift 1 (bitwise-first-bit-set (bitwise-not flags))))))
 
-(define (strengthen steps pos remaining last rep flags)
+(define (maybe-add-flag flags char)
+  (bitwise-ior
+   flags
+   (cond
+    [(char-lower-case? char) HAS_LOWER]
+    [(char-upper-case? char) HAS_UPPER]
+    [(char-numeric? char) HAS_DIGIT]
+    [else 0])))
+
+(define (calc-rep rep a b)
+  (if (eq? a b) (add1 rep) 1))
+
+(define (strengthen
+	 #:steps (steps 0)
+	 #:pos (pos 0)
+	 #:remaining (remaining '())
+	 #:last-char (last-char '())
+	 #:rep (rep 0)
+	 #:flags (flags 0))
   (let ((chars-left (max 0 (- 6 pos)))
 	(curr-length (+ pos (length remaining)))
 	(spc-chr-left (- 3 (bitwise-bit-count flags))))
-(cond
- [(null? remaining)
-  (+ steps (max chars-left spc-chr-left))]
- [(= 3 rep)
-  (cond
-   [(> spc-chr-left 0)   ])])))
-  
-(define (strengthen steps pos remaining)
-  (let ((charsLeft (max 0 (- 6 pos)))
-	(curr-length (+ pos (length remaining)))
-	(spc-chr-left (- 3 (+ (btoi has-lower) (btoi has-upper) (btoi has-digit)))))
-    (displayln `(,steps ,curr-length ,pos ,charsLeft ,has-lower ,has-upper ,has-digit ,remaining))
+    (displayln `(strengthen
+		 #:steps ,steps
+		 #:pos ,pos
+		 #:remaining ,remaining
+		 #:last-char ,last-char 
+		 #:rep ,rep
+		 #:flags ,flags
+		 curr-length ,curr-length))
     (cond
-     [(and has-lower
-	   has-upper
-	   has-digit
-	   (null? remaining)
-	   (>= 6 pos)
-	   (<= 20 pos))
-      steps]
-     [(and (= 20 pos)
-	   (> (length remaining) 0))
-      (let ((r (car remaining)))
-	(strengthen
-	 (add1 steps)
-	 pos
-	 (cdr remaining)))]
      [(null? remaining)
-      (+ steps (max charsLeft spc-chr-left))]
-     [(and (>= (length remaining) 3) (= 1 (length (remove-duplicates (take remaining 3)))))
-      (cond [(and
-	      (>= curr-length 6)
-	      (or
-	       (> spc-chr-left 0)
-	       (= (length remaining) 3)
-	       (and (<= curr-length 20) eq? (third remaining) (fourth remaining))))
-	     (set! has-digit (or has-upper has-digit))
-	     (set! has-upper (or has-lower has-upper))
-	     (set! has-lower #t)
-	     (strengthen (add1 steps) (+ 3 pos) (drop remaining 3))]
-	    [(< curr-length 6)
-	     (strengthen (add1 steps) (+ 2 pos) (cdr remaining))]
-	    [(> curr-length 20)
-	     (strengthen (add1 steps) pos (cdr remaining))]
-	    [else (strengthen (add1 steps) pos (cdr remaining))])]
-     [else (strengthen steps (add1 pos) (cdr remaining))])))
+      (+ steps (max chars-left spc-chr-left) (if (= 3 rep) 1 0))]
+     [(= 3 rep)
+      (cond
+       [(< curr-length 6)
+	(strengthen
+	 #:steps (add1 steps)
+	 #:pos (add1 pos)
+	 #:remaining remaining
+	 #:last-char '()
+	 #:rep 0
+	 #:flags (add-next-flag flags))]
+       [(or (> spc-chr-left 0) (eq? last-char (car remaining)))
+	(strengthen
+	 #:steps (add1 steps)
+	 #:pos pos
+	 #:remaining remaining
+	 #:last-char '()
+	 #:rep 0
+	 #:flags (add-next-flag flags))]
+       [else
+	(strengthen
+	 #:steps (add1 steps)
+	 #:pos pos
+	 #:remaining (cdr remaining)
+	 #:last-char (car remaining)
+	 #:rep 1
+	 #:flags flags)])]
+     [(and (= pos 20))
+      (strengthen
+       #:steps (add1 steps)
+       #:pos pos
+       #:remaining (cdr remaining)
+       #:last-char (car remaining)
+       #:rep rep
+       #:flags (maybe-add-flag flags (car remaining)))]
+     [else
+      (strengthen
+       #:steps steps
+       #:pos (add1 pos)
+       #:remaining (cdr remaining)
+       #:last-char (car remaining)
+       #:rep (calc-rep rep last-char (car remaining))
+       #:flags (maybe-add-flag flags (car remaining)))])))
+  
+
+
+
+
+
+
+
+
+
+
+;; (define (strengthen steps pos remaining)
+;;   (let ((charsLeft (max 0 (- 6 pos)))
+;; 	(curr-length (+ pos (length remaining)))
+;; 	(spc-chr-left (- 3 (+ (btoi has-lower) (btoi has-upper) (btoi has-digit)))))
+;;     (displayln `(,steps ,curr-length ,pos ,charsLeft ,has-lower ,has-upper ,has-digit ,remaining))
+;;     (cond
+;;      [(and has-lower
+;; 	   has-upper
+;; 	   has-digit
+;; 	   (null? remaining)
+;; 	   (>= 6 pos)
+;; 	   (<= 20 pos))
+;;       steps]
+;;      [(and (= 20 pos)
+;; 	   (> (length remaining) 0))
+;;       (let ((r (car remaining)))
+;; 	(strengthen
+;; 	 (add1 steps)
+;; 	 pos
+;; 	 (cdr remaining)))]
+;;      [(null? remaining)
+;;       (+ steps (max charsLeft spc-chr-left))]
+;;      [(and (>= (length remaining) 3) (= 1 (length (remove-duplicates (take remaining 3)))))
+;;       (cond [(and
+;; 	      (>= curr-length 6)
+;; 	      (or
+;; 	       (> spc-chr-left 0)
+;; 	       (= (length remaining) 3)
+;; 	       (and (<= curr-length 20) eq? (third remaining) (fourth remaining))))
+;; 	     (set! has-digit (or has-upper has-digit))
+;; 	     (set! has-upper (or has-lower has-upper))
+;; 	     (set! has-lower #t)
+;; 	     (strengthen (add1 steps) (+ 3 pos) (drop remaining 3))]
+;; 	    [(< curr-length 6)
+;; 	     (strengthen (add1 steps) (+ 2 pos) (cdr remaining))]
+;; 	    [(> curr-length 20)
+;; 	     (strengthen (add1 steps) pos (cdr remaining))]
+;; 	    [else (strengthen (add1 steps) pos (cdr remaining))])]
+;;      [else (strengthen steps (add1 pos) (cdr remaining))])))
 
 (map strong-password-checker '("a"
 			       "aaa111"
@@ -114,3 +189,4 @@
 ;; 0
 ;; 5
 ;; 4
+
