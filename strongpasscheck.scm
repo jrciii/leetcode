@@ -26,7 +26,7 @@
   ;; 		(set! has-digit (or has-digit (char-numeric? c))))
   ;; 	      clist)
   ;;   (strengthen 0 0 clist))
-  (strengthen 0 0 (string->list password) 0 #f #f #f)
+  (strengthen 0 0 (string->list password) '() 0 #f #f #f)
   )
 
 (define (btoi b)
@@ -35,25 +35,24 @@
 (define HAS_LOWER 1)
 (define HAS_UPPER 2)
 (define HAS_DIGIT 4)
+(define MAX_FLAGS (+ HAS_LOWER HAS_UPPER HAS_DIGIT))
 
 (define (set-flag bitflag flag)
   (bitwise-ior flags flag))
 
-(bitwise-bit-count 7)
-
-(define (add-flag flags)
-  (bitwise-ior flags (bitwise-arithmetic-shift 1 (bitwise-first-bit-set (bitwise-not flags)))))
+(define (add-next-flag flags)
+  (bitwise-and MAX_FLAGS (bitwise-ior flags (bitwise-arithmetic-shift 1 (bitwise-first-bit-set (bitwise-not flags))))))
 
 (define (strengthen steps pos remaining last rep flags)
   (let ((chars-left (max 0 (- 6 pos)))
 	(curr-length (+ pos (length remaining)))
-	(spc-chr-left (bitwise-bit-count flags)))
+	(spc-chr-left (- 3 (bitwise-bit-count flags))))
 (cond
  [(null? remaining)
   (+ steps (max chars-left spc-chr-left))]
  [(= 3 rep)
   (cond
-   [(> spc-chr-left 0)  ])])))
+   [(> spc-chr-left 0)   ])])))
   
 (define (strengthen steps pos remaining)
   (let ((charsLeft (max 0 (- 6 pos)))
