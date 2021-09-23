@@ -1,31 +1,36 @@
 #lang racket
 (require racket/match)
 
-(define/contract (full-justify words maxWidth)
-  (-> (listof string?) exact-integer? (listof string?))
-  (cond
-   [(null? words) null]
-   [else null])
-  )
+(define (full-justify words maxWidth)
+  (justify words maxWidth))
 
 (define (pad words maxWidth)
-  (let ((spaces (- maxWidth (foldl + 0 (map string-length words))))
-	(words-to-pad (length (cdr words))))
+  (let ((spaces (- maxWidth (foldl + 0 (map string-length words)))))
     (cond
      [(null? words) null]
      [(= 1 (length words)) (string-append (car words) (make-string (- maxWidth (string-length (car words))) #\space))]
-     [else (string-append (car words) (string-join (cdr words) (make-string (quotient spaces words-to-pad) #\space) #:before-first (make-string (round (/ spaces words-to-pad)) #\space)))])))
+     [else
+      (let*-values (((words-to-pad) (length (cdr words)))
+		    ((lspace-len) (quotient spaces words-to-pad))
+		    ((lspace) (make-string lspace-len #\space))
+		    ((bspace-len) (ceiling (/ spaces words-to-pad)))
+		    ((bspace) (make-string bspace-len #\space))
+		    ((btimes) (- spaces (* words-to-pad lspace-len)))
+		    ((bw lw) (split-at words (add1 btimes))))
+	(string-append
+	 (string-join bw bspace)
+	 (if (null? lw) "" (string-join lw lspace #:before-first lspace))))])))
+
+(define (pad-last words maxWidth)
+  (let ((trail-space (- maxWidth (+ (sub1 (length words)) (foldl + 0 (map string-length words))))))
+    (string-join words " " #:after-last (make-string trail-space #\space))))
 
 (define (justify words maxWidth)
   (match words
-    ['() '()]
-    [(list a) (pad a)]
-    [(list a b ... c ...)
-     #:when (<= (+ (string-length a) (foldl + 0 (map (compose add1 string-length) b))) maxWidth)
-     (list a b c)]))
-
-(justify '("a" "b" "c" "d" "dude" "asdlk;fja" "x") 16)
-
-(round (/ 3 2))
-
-(pad '("dude" "bro") 16)
+    ['() ""]
+    [(list a ...)
+     #:when (<= (+ (sub1 (length a)) (foldl + 0 (map string-length a))) maxWidth)
+     (list (pad-last a maxWidth))]
+    [(list a ..1 b ..1)
+     #:when (<= (+ (sub1 (length a)) (foldl + 0 (map string-length a))) maxWidth)
+     (cons (pad a maxWidth) (justify b maxWidth))]))
