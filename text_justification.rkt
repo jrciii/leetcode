@@ -27,10 +27,9 @@
 
 (define (justify words maxWidth)
   (match words
-    ['() ""]
-    [(list a ...)
-     #:when (<= (+ (sub1 (length a)) (foldl + 0 (map string-length a))) maxWidth)
-     (list (pad-last a maxWidth))]
-    [(list a ..1 b ..1)
+    ['() '("")]
+    [(list a ..1 b ...)
      #:when (<= (+ (sub1 (length a)) (foldl + 0 (map string-length a))) maxWidth)
      (cons (pad a maxWidth) (justify b maxWidth))]))
+
+(display (string-join (justify '["ask" "not" "what" "your" "country" "can" "do" "for" "you" "ask" "what" "you" "can" "do" "for" "your" "country"] 16) "\n"))
