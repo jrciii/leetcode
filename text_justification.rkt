@@ -30,6 +30,10 @@
     ['() '("")]
     [(list a ..1 b ...)
      #:when (<= (+ (sub1 (length a)) (foldl + 0 (map string-length a))) maxWidth)
-     (cons (pad a maxWidth) (justify b maxWidth))]))
+     (cons
+      (if (null? b)
+	  (pad-last a maxWidth)
+	  (pad a maxWidth))
+      (justify b maxWidth))]))
 
 (display (string-join (justify '["ask" "not" "what" "your" "country" "can" "do" "for" "you" "ask" "what" "you" "can" "do" "for" "your" "country"] 16) "\n"))
